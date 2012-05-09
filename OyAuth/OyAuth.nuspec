@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>OyAuth</id>
+    <version>#version#</version>
+    <authors>Andy Edinborough</authors>
+    <description>Really simple library for working with OAuth and OpenID</description>
+    <language>en-US</language>
+    <licenseUrl>http://andyedinborough.mit-license.org/</licenseUrl>
+    <projectUrl>https://github.com/andyedinborough/OyAuth</projectUrl>
+    <releaseNotes><![CDATA[#message#]]></releaseNotes>
+    <dependencies>
+      <dependency id="XHTMLr" version="1.0.1" />
+    </dependencies>
+  </metadata>
+</package>

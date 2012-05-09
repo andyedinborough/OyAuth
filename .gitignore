@@ -51,3 +51,8 @@ TestResults\*
 Spam\*
 packages\*
 bin\*
+OyAuth/bin/*
+OyAuth/obj/*
+packages/*
+*/bin/*
+*/obj/*

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 
-namespace SimpleAuth {
+namespace OyAuth {
     public class InvalidContentTypeException : System.Exception {
         public InvalidContentTypeException(System.Net.WebRequest req, System.Net.WebResponse res) {
             Response = (System.Net.HttpWebResponse)res;
@@ -25,6 +25,7 @@ namespace SimpleAuth {
         public WebClient() {
             Cookies = new CookieContainer();
             Encoding = System.Text.Encoding.UTF8;
+      SuppressInvalidStatusCode = true;
         }
 
         /// <summary>
@@ -37,6 +38,8 @@ namespace SimpleAuth {
         public bool KeepAlive { get; set; }
         public string[] ValidContentTypes { get; set; }
         public string ContentType { get; set; }
+    public DateTime? IfModifiedSince { get; set; }
+    public bool SuppressInvalidStatusCode { get; set; }
 
         public CookieContainer Cookies { get; set; }
 
@@ -60,6 +63,7 @@ namespace SimpleAuth {
                 if (Timeout > 0) req.Timeout = Timeout * 1000;
                 if (!Referer.IsNullOrEmpty()) req.Referer = Referer;
                 if (!UserAgent.IsNullOrEmpty()) req.UserAgent = UserAgent;
+        if (IfModifiedSince != null) req.IfModifiedSince = IfModifiedSince.Value;
                 req.KeepAlive = KeepAlive;
 
                 req.Accept = Headers[HttpRequestHeader.Accept].NotEmpty(Headers["accept"], req.Accept);
@@ -89,10 +93,12 @@ namespace SimpleAuth {
                 try {
                     baseresp = base.GetWebResponse(request);
                 } catch (WebException ex) {
+          if (!SuppressInvalidStatusCode) throw;
                     baseresp = ex.Response;
                 }
 
                 var resp = baseresp as System.Net.HttpWebResponse;
+        if (resp == null) return baseresp;
                 StatusCode = resp.StatusCode;
 
                 if (resp.Headers[HttpResponseHeader.Location].IsNullOrEmpty()) {
