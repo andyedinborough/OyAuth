@@ -187,7 +187,7 @@ namespace OyAuth {
     }
 
     internal static IDictionary<string, string> ParseQueryString(string url, string querystring = null) {
-      int index = url.IndexOf('?');
+      int index = url == null ? -1 : url.IndexOf('?');
       querystring = querystring.NotNull();
 
       if (index > -1) {
