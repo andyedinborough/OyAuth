@@ -39,8 +39,9 @@
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Xml" />
-    <Reference Include="XHTMLr">
-      <HintPath>..\packages\XHTMLr.1.0.1.0\lib\net40\XHTMLr.dll</HintPath>
+    <Reference Include="XHTMLr, Version=1.0.3.28630, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\XHTMLr.1.0.3.0\lib\net40\XHTMLr.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -57,8 +58,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Create-Package.ps1" />
+    <None Include="OyAuth.nuspec">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
-    <None Include="OyAuth.nuspec" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" />

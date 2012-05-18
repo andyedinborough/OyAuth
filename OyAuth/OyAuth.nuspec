@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/andyedinborough/OyAuth</projectUrl>
     <releaseNotes><![CDATA[#message#]]></releaseNotes>
     <dependencies>
-      <dependency id="XHTMLr" version="1.0.1" />
+      <dependency id="XHTMLr" version="1.0.3.0" />
     </dependencies>
   </metadata>
 </package>
