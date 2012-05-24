@@ -56,3 +56,5 @@ OyAuth/obj/*
 packages/*
 */bin/*
 */obj/*
+*.mdf
+*.ldf

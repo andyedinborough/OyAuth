@@ -19,6 +19,8 @@ namespace OyAuth {
       if (value == null) return null;
       var result = new StringBuilder();
       foreach (char symbol in value) {
+        //if (symbol == ' ') result.Append('+');
+        //else 
         if (_UnreservedChars.IndexOf(symbol) != -1 || (except != null && except.Contains(symbol))) {
           result.Append(symbol);
         } else {
@@ -186,32 +188,83 @@ namespace OyAuth {
       return input;
     }
 
-    internal static IDictionary<string, string> ParseQueryString(string url, string querystring = null) {
-      int index = url == null ? -1 : url.IndexOf('?');
-      querystring = querystring.NotNull();
-
-      if (index > -1) {
-        querystring = url.Substring(index + 1)
-            + (querystring.Length > 0 ? '&' + querystring : string.Empty);
+    public class Query : IEnumerable<Query.Entry> {
+      public class Entry {
+        public string Name { get; set; }
+        public string Value { get; set; }
+        public override string ToString() {
+          return ToString(true);
+        }
+        public string ToString(bool encode) {
+          return (encode ? Name.UrlEncode() : Name) + "=" + (encode ? Value.UrlEncode() : Value);
+        }
+      }
+      private List<Entry> _Entries = new List<Entry>();
+      public string this[string name] {
+        get {
+          return string.Join(",", _Entries.Where(x => x.Name.Is(name)).Select(x => x.Value));
+        }
+        set {
+          var entry = _Entries.FirstOrDefault(x => x.Name.Is(name));
+          if (entry == null)
+            _Entries.Add(entry = new Entry { Name = name });
+          entry.Value = value;
+        }
+      }
+      public override string ToString() {
+        return ToString(true, (string[])null);
       }
 
-      //parse the querystring into a dictionary, rather than NameValueCollection, so it's easier to manipulate 
-      var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-      if (querystring.Length == 0) return result;
-
-      var items = querystring.Split('&').Select(x => {
-        int i = x.IndexOf('=');
-        if (i == -1) return new[] { x, null };
-        else return new[] { x.Substring(0, i), Uri.UnescapeDataString(x.Substring(i + 1)) };
-      });
-      foreach (var item in items) {
-        if (result.ContainsKey(item[0]))
-          result[item[0]] += ',' + item[1];
-        else result.Add(item[0], item[1]);
+      public bool ContainsKey(string key) {
+        return _Entries.Any(x => x.Name.Is(key));
       }
 
-      return result;
+      public string ToString(bool encode, params string[] ignore) {
+        var entries = _Entries.AsEnumerable();
+        return string.Join("&",
+          _Entries
+            .Where(x => ignore == null || !ignore.Contains(x.Name, StringComparer.OrdinalIgnoreCase))
+            .Select(x => new Entry { Name = encode ? x.Name.UrlEncode() : x.Name, Value = encode ? x.Value.UrlEncode() : x.Value })
+            .OrderBy(x => x.Name, StringComparer.Ordinal).ThenBy(x => x.Value, StringComparer.Ordinal)
+            .Select(x => x.ToString(false))
+            );
+      }
+
+      public IEnumerable<string> Keys {
+        get {
+          return _Entries.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+      }
+
+      public Query(string url, string querystring) {
+        int index = url == null ? -1 : url.IndexOf('?');
+        querystring = querystring.NotNull();
+
+        if (index > -1) {
+          querystring = url.Substring(index + 1)
+              + (querystring.Length > 0 ? '&' + querystring : string.Empty);
+        }
+
+        if (querystring.Length == 0) return;
+
+        var items = querystring.Split('&').Select(x => {
+          int i = x.IndexOf('=');
+          if (i == -1) return new[] { x, null };
+          else return new[] { x.Substring(0, i), Uri.UnescapeDataString(x.Substring(i + 1)) };
+        });
+
+        foreach (var item in items) {
+          _Entries.Add(new Entry { Name = item[0], Value = item[1] });
+        }
+      }
+
+      public IEnumerator<Query.Entry> GetEnumerator() {
+        return _Entries.GetEnumerator();
+      }
+
+      IEnumerator IEnumerable.GetEnumerator() {
+        return _Entries.GetEnumerator();
+      }
     }
-
   }
 }

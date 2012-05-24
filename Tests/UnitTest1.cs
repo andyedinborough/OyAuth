@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Should.Fluent;
 
@@ -7,14 +8,31 @@ namespace OyAuth.Tests {
   public class UnitTest1 {
     public TestContext TestContext { get; set; }
 
+    [TestMethod]
+    public void ValidateSignatures() {
+      OAuth.MaxNonceAge = TimeSpan.FromDays(365 * 10);
+
+      string authHeader = "OAuth realm=\"https://api.tripit.com\",oauth_nonce=\"39100e296c709a592600c8d1a3ee69dd\",oauth_timestamp=\"1235272437\",oauth_consumer_key=\"5dbf348aa966c5f7f07e8ce2ba5e7a3badc234bc\",oauth_signature_method=\"HMAC-SHA1\",oauth_version=\"1.0\",oauth_signature=\"KlTlU95CdzFYo5tfrJjaPz5RA6g%3D\"";
+      var path = "https://api.tripit.com/oauth/request_token";
+      var secret = "fceb3aedb960374e74f559caeabab3562efe97b4";
+      var form = string.Empty;
+      OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);
+
+      // http://oauth.googlecode.com/svn/code/javascript/example/signature.html
+      authHeader = "OAuth oauth_version=\"1.0\",oauth_consumer_key=\"abcd\",oauth_timestamp=\"1337836962\",oauth_nonce=\"95oLoBA5T5t\",oauth_signature_method=\"HMAC-SHA1\",oauth_signature=\"45nIZooTtkxrtMQTAr0pmIMkKs0%3D\"";
+      form = "access=tested&Name=test";
+      path = "http://host.net/resource";
+      secret = "efgh";
+      OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);
+    }
 
     [TestMethod]
     public void ParseQueryString() {
-      var query = OyAuth.Utilities.ParseQueryString("http://test/?id=0&id=1&another=test");
+      var query = new OyAuth.Utilities.Query("http://test/?id=0&id=1&another=test", string.Empty);
       query["id"].Should().Equal("0,1");
       query["another"].Should().Equal("test");
 
-      query = OyAuth.Utilities.ParseQueryString(string.Empty, "id=0&id=1&another=test");
+      query = new OyAuth.Utilities.Query(string.Empty, "id=0&id=1&another=test");
       query["id"].Should().Equal("0,1");
       query["another"].Should().Equal("test");
     }

@@ -74,7 +74,7 @@ namespace OyAuth {
 
       string query = Uri.Query.TrimStart('?');
       if (query.Length > 0) {
-        var coll = Utilities.ParseQueryString(null, query);
+        var coll = new Utilities.Query(null, query);
         query = string.Empty;
         foreach (string name in coll.Keys.Select(x => x.NotNull().ToLower()).OrderBy(x => x))
           query = string.Concat(query, query.Length == 0 ? '?' : '&', name, "=", NormalizeQueryValue(coll[name]));

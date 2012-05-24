@@ -8,7 +8,20 @@ namespace OyAuth {
     private const string _UnreservedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~";
     public const string HMACSHA1 = "HMAC-SHA1";
 
-    private static readonly TimeSpan MaxNonceAge = TimeSpan.FromMinutes(5);
+    private static TimeSpan _MaxNonceAge = TimeSpan.FromMinutes(5);
+    public static TimeSpan MaxNonceAge {
+      get { return _MaxNonceAge; }
+      set {
+        _MaxNonceAge = value;
+        var max = 2 ^ 32 - 2;
+        if (_MaxNonceAge.TotalMilliseconds > max) {
+          _Cleanup.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        } else {
+          _Cleanup.Change(_MaxNonceAge, _MaxNonceAge);
+
+        }
+      }
+    }
     private static readonly SafeDictionary<string, DateTime> _NonceCache = new SafeDictionary<string, DateTime>();
     private static readonly System.Threading.Timer _Cleanup = new System.Threading.Timer(state => {
       lock (_Cleanup) {
@@ -49,21 +62,21 @@ namespace OyAuth {
     public static bool Validate(string method, string url, string posted, string authorizationHeader, double numSecondsValid, Func<string, string> GetConsumerSecret, bool throwOnError = false, Func<string, string, string> GetTokenSecret = null) {
       method = method ?? "GET";
 
-      if (numSecondsValid < 0 || numSecondsValid >= MaxNonceAge.TotalSeconds)
+      if (numSecondsValid < 0 || numSecondsValid > MaxNonceAge.TotalSeconds)
         throw new ArgumentException(string.Format("Must be more than 0 and less than {0} seconds", MaxNonceAge.TotalSeconds), "numSecondsValid");
 
-      var query = Utilities.ParseQueryString(url, posted);
+      var query = new Utilities.Query(url, posted);
       if (!authorizationHeader.IsNullOrEmpty()) {
         var authorization = ParseAuthorizationHeader(authorizationHeader);
-        authorization.Keys.ForEach(key => query.SetValue(key, authorization[key]));
+        authorization.Keys.ForEach(key => query[key] = authorization[key]);
       }
 
-      if (query.GetValue("oauth_version") != "1.0") {
+      if (query["oauth_version"] != "1.0") {
         if (throwOnError) throw new System.Web.HttpException(401, "Invalid version specified");
       }
 
       if (numSecondsValid > 0) {
-        double timestamp = query.GetValue("oauth_timestamp").ToDouble();
+        double timestamp = query["oauth_timestamp"].ToDouble();
         double diff = Math.Abs(DateTime.UtcNow.GetSecondsSince1970() - timestamp);
 
         if (diff > numSecondsValid) {
@@ -71,36 +84,38 @@ namespace OyAuth {
           return false;
         }
 
-        DateTime used = _NonceCache[query.GetValue("oauth_nonce")];
+        DateTime used = _NonceCache[query["oauth_nonce"]];
         if (used.AddSeconds(numSecondsValid) > DateTime.UtcNow) {
           if (throwOnError) throw new System.Web.HttpException(401, "The nonce is not unique");
           return false;
         }
-        _NonceCache[query.GetValue("oauth_nonce")] = DateTime.UtcNow;
+        _NonceCache[query["oauth_nonce"]] = DateTime.UtcNow;
       }
 
-      string hashAlgorithm = query.GetValue("oauth_signature_method");
+      string hashAlgorithm = query["oauth_signature_method"];
       int q = url.IndexOf('?');
       string path = q == -1 ? url : url.Substring(0, q);
 
-      string secret = GetConsumerSecret(query.GetValue("oauth_consumer_key").NotEmpty(query.GetValue("client_id")));
+      string secret = GetConsumerSecret(query["oauth_consumer_key"].NotEmpty(query["client_id"]));
       string sig;
       try {
-        //var postedquery = ParseQueryString(string.Empty, posted);
-        var querystring = GetQueryString(query, null, true);
-        sig = GetSignature(method, hashAlgorithm, secret, path, querystring, GetTokenSecret != null && query.ContainsKey("oauth_token") ? GetTokenSecret(query["oauth_token"], query.GetValue("oauth_verifier")) : null);
+        var querystring = GetQueryString(query, true);
+        sig = GetSignature(method, hashAlgorithm, secret, path, querystring, GetTokenSecret != null && query.ContainsKey("oauth_token") ? GetTokenSecret(query["oauth_token"], query["oauth_verifier"]) : null);
       } catch (Exception) {
         if (throwOnError) throw;
         return false;
       }
 
-      if (sig != query["oauth_signature"]) {
-        if (throwOnError) throw new System.Web.HttpException(401, "The signature is invalid");
+      var testSig = query["oauth_signature"];
+      if (sig != testSig) {
+        if (throwOnError)
+          throw new System.Web.HttpException(401, string.Format("The signature is invalid. {0}", GetQueryString(query, false)));
         return false;
       }
 
       return true;
     }
+
 
     public static IDictionary<string, string> ParseAuthorizationHeader(string header) {
       while (header.StartsWith("OAuth")) header = header.Substring(5).Trim();
@@ -134,54 +149,50 @@ namespace OyAuth {
       value = value.Substring(skip, quote - skip);
     }
 
-    private static string GetQueryString(IEnumerable<KeyValuePair<string, string>> query, IDictionary<string, string> posted, bool encode) {
-      return string.Join("&",
-          query.OrderBy(x => x.Value).OrderBy(x => x.Key)
-              .Where(x => !x.Key.Is("oauth_signature") && (posted == null || !posted.ContainsKey(x.Key)))
-              .Select(x =>
-                  string.Concat(x.Key, (x.Value == null ? string.Empty : "=" + (encode ? x.Value.UrlEncode() : x.Value)))).ToArray());
+    private static string GetQueryString(Utilities.Query query, bool encode) {
+      return query.ToString(encode, "oauth_signature", "realm");
     }
 
     public static string GenerateUrl(string url, string consumerKey, string consumerSecret, string method = null, string hashAlgorithm = null, string posted = null, string token = null, string verifier = null, string tokenSecret = null) {
       var result = GetInfo(method, hashAlgorithm, ref url, posted, consumerKey, consumerSecret, token, verifier, tokenSecret);
-      var querystring = GetQueryString(result.Item1, result.Item2, true);
+      var querystring = GetQueryString(result.Item1, true);
       return string.Concat(url, "?", querystring, "&oauth_signature=", result.Item3.UrlEncode());
     }
 
     public static string GenerateAuthorizationHeader(string url, string consumerKey, string consumerSecret, string method = null, string hashAlgorithm = null, string posted = null, string token = null, string verifier = null, string tokenSecret = null, string realm = null) {
       var result = GetInfo(method, hashAlgorithm, ref url, posted, consumerKey, consumerSecret, token, verifier, tokenSecret);
-      result.Item1.Add("oauth_signature", result.Item3);
+      result.Item1["oauth_signature"] = result.Item3;
       realm = realm.IsNullOrEmpty() ? url.ToUri().GetLeftPart(UriPartial.Authority) : realm;
 
-      var @params = result.Item1.Where(x => x.Key.StartsWith("oauth_")).OrderBy(x => x.Key)
-          .Select(x => string.Format("{0}=\"{1}\"", x.Key, x.Value.UrlEncode())).ToArray();
+      var @params = result.Item1.Where(x => x.Name.StartsWith("oauth_")).OrderBy(x => x.Name)
+          .Select(x => string.Format("{0}=\"{1}\"", x.Name, x.Value.UrlEncode())).ToArray();
       return string.Concat("OAuth realm=\"", realm.UrlEncode(), "\", ", string.Join(", ", @params));
     }
 
-    public static Tuple<IDictionary<string, string>, IDictionary<string, string>, string> GetInfo(string method, string hashAlgorithm, ref string url, string posted, string consumerKey, string consumerSecret, string token, string verifier, string tokenSecret) {
+    public static Tuple<Utilities.Query, Utilities.Query, string> GetInfo(string method, string hashAlgorithm, ref string url, string posted, string consumerKey, string consumerSecret, string token, string verifier, string tokenSecret) {
       method = method ?? "GET";
       hashAlgorithm = hashAlgorithm ?? HMACSHA1;
 
       string timestamp = DateTime.UtcNow.GetSecondsSince1970().ToString();
       string nonce = GetNonce();
 
-      var query = Utilities.ParseQueryString(url, posted);
-      var postedquery = Utilities.ParseQueryString(string.Empty, posted);
+      var query = new Utilities.Query(url, posted);
+      var postedquery = new Utilities.Query(string.Empty, posted);
 
       int q = url.IndexOf('?');
       if (q > -1) url = url.Substring(0, q);
 
       //add the oauth stuffs
-      query.SetValue("oauth_consumer_key", consumerKey);
-      query.SetValue("oauth_nonce", nonce);
-      query.SetValue("oauth_signature_method", hashAlgorithm);
-      query.SetValue("oauth_timestamp", timestamp);
-      query.SetValue("oauth_version", "1.0");
-      if (token != null) query.SetValue("oauth_token", token);
-      if (verifier != null) query.SetValue("oauth_verifier", verifier);
+      query["oauth_consumer_key"] = consumerKey;
+      query["oauth_nonce"] = nonce;
+      query["oauth_signature_method"] = hashAlgorithm;
+      query["oauth_timestamp"] = timestamp;
+      query["oauth_version"] = "1.0";
+      if (token != null) query["oauth_token"] = token;
+      if (verifier != null) query["oauth_verifier"] = verifier;
 
       //put the querystring back together in alphabetical order
-      string querystring = GetQueryString(query, null, true);
+      string querystring = GetQueryString(query, true);
       string sig = GetSignature(method, hashAlgorithm, consumerSecret, url, querystring, tokenSecret);
 
       return Tuple.Create(query, postedquery, sig);
