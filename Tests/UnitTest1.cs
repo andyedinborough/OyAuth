@@ -19,8 +19,8 @@ namespace OyAuth.Tests {
       OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);
 
       // http://oauth.googlecode.com/svn/code/javascript/example/signature.html
-      authHeader = "OAuth oauth_version=\"1.0\",oauth_consumer_key=\"abcd\",oauth_timestamp=\"1337836962\",oauth_nonce=\"95oLoBA5T5t\",oauth_signature_method=\"HMAC-SHA1\",oauth_signature=\"45nIZooTtkxrtMQTAr0pmIMkKs0%3D\"";
-      form = "access=tested&Name=test";
+      authHeader = "OAuth realm=\"\",oauth_version=\"1.0\",oauth_consumer_key=\"abcd\",oauth_timestamp=\"1337880056\",oauth_nonce=\"uvaH8OlEQZO\",oauth_signature_method=\"HMAC-SHA1\",oauth_signature=\"CvsqEeMIzh51f1D5QfpDiVt8F7I%3D\"";
+      form = "access=tested&Name=test+tested tester";
       path = "http://host.net/resource";
       secret = "efgh";
       OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);

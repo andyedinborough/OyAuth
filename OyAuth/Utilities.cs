@@ -19,9 +19,8 @@ namespace OyAuth {
       if (value == null) return null;
       var result = new StringBuilder();
       foreach (char symbol in value) {
-        //if (symbol == ' ') result.Append('+');
-        //else 
-        if (_UnreservedChars.IndexOf(symbol) != -1 || (except != null && except.Contains(symbol))) {
+        if (symbol == '+') result.Append("%20");
+        else if (_UnreservedChars.IndexOf(symbol) != -1 || (except != null && except.Contains(symbol))) {
           result.Append(symbol);
         } else {
           result.AppendFormat("%{0:X2}", (int)symbol);
