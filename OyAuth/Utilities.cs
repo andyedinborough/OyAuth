@@ -249,7 +249,7 @@ namespace OyAuth {
         var items = querystring.Split('&').Select(x => {
           int i = x.IndexOf('=');
           if (i == -1) return new[] { x, null };
-          else return new[] { x.Substring(0, i), Uri.UnescapeDataString(x.Substring(i + 1)) };
+          else return new[] { Uri.UnescapeDataString(x.Substring(0, i)), Uri.UnescapeDataString(x.Substring(i + 1)) };
         });
 
         foreach (var item in items) {

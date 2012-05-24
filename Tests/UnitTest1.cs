@@ -24,6 +24,12 @@ namespace OyAuth.Tests {
       path = "http://host.net/resource";
       secret = "efgh";
       OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);
+
+      form = "Address=dsdsdsds&City=dsdsdsds&Country=USA&Degrees%5b0%5d.DateCompleted=&Degrees%5b0%5d.Location=&Degrees%5b0%5d.Major=&Degrees%5b0%5d.School=uw&Degrees%5b0%5d.Type=8&Email=hac.jdd@gmail.com&IsDefault=true&JobHistories%5b0%5d.DateEnd=&JobHistories%5b0%5d.DateStart=2012-01-01&JobHistories%5b0%5d.Description=null&JobHistories%5b0%5d.Employer=null&JobHistories%5b0%5d.Location=null&JobHistories%5b0%5d.Title=null&Name=My%2520God&PhoneMobile=258&State=vvvvaaaa&Zip=6688777&access_token=7b7df4fa-8bc7-4a58-baed-81531dd2e5e0";
+      path = "http://1apply.com/api/resume/28/edit.json";
+      authHeader = "oauth_consumer_key=\"A2E851B5-A287-4EFD-B715-42A6A145206F\", oauth_signature_method=\"HMAC-SHA1\", oauth_signature=\"voHrXSzBHgVw%2FZw4pMPPhCUsaBQ%3D\", oauth_timestamp=\"1337856459\", oauth_nonce=\"7EDD5EF7-4A4A-4D45-A99B-A281437CAC53\", oauth_version=\"1.0\"";
+      secret = "IgAX9hMr8txR1kepdl3yzjNi6Oo2nCFHGUcD0PTVLWq7KvBQ";
+      OAuth.Validate("POST", path, form, authHeader, OAuth.MaxNonceAge.TotalSeconds, key => secret, true);
     }
 
     [TestMethod]
